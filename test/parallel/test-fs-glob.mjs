@@ -74,9 +74,14 @@ const patterns = {
   'a/abc{fed,def}/g/h': ['a/abcdef/g/h', 'a/abcfed/g/h'],
   'a/abc{fed/g,def}/**/': ['a/abcdef', 'a/abcdef/g', 'a/abcfed/g'],
   'a/abc{fed/g,def}/**///**/': ['a/abcdef', 'a/abcdef/g', 'a/abcfed/g'],
-  '**/a': common.isWindows ? ['a'] : ['a', 'a/symlink/a'],
+  '**/a': common.isWindows ? ['a', 'a/.abcdef/x/y/z/a' ] : ['a', 'a/.abcdef/x/y/z/a', 'a/symlink/a'],
   '**/a/**': [
     'a',
+    'a/.abcdef',
+    'a/.abcdef/x',
+    'a/.abcdef/x/y',
+    'a/.abcdef/x/y/z',
+    'a/.abcdef/x/y/z/a',
     'a/abcdef',
     'a/abcdef/g',
     'a/abcdef/g/h',
@@ -103,11 +108,19 @@ const patterns = {
       'a/symlink/a/b/c',
     ]),
     'a/x',
+    'a/x/.y',
+    'a/x/.y/b',
     'a/z',
+    'a/z/.y',
+    'a/z/.y/b'
   ],
-  './**/a': common.isWindows ? ['a'] : ['a', 'a/symlink/a', 'a/symlink/a/b/c/a'],
+  './**/a': common.isWindows ? ['a', 'a/.abcdef/x/y/z/a'] : ['a', 'a/.abcdef/x/y/z/a', 'a/symlink/a', 'a/symlink/a/b/c/a'],
   './**/a/**/': [
     'a',
+    'a/.abcdef',
+    'a/.abcdef/x',
+    'a/.abcdef/x/y',
+    'a/.abcdef/x/y/z',
     'a/abcdef',
     'a/abcdef/g',
     'a/abcfed',
@@ -131,10 +144,17 @@ const patterns = {
       'a/symlink/a/b/c/a/b/c',
     ]),
     'a/x',
+    'a/x/.y',
     'a/z',
+    'a/z/.y'
   ],
   './**/a/**': [
     'a',
+    'a/.abcdef',
+    'a/.abcdef/x',
+    'a/.abcdef/x/y',
+    'a/.abcdef/x/y/z',
+    'a/.abcdef/x/y/z/a',
     'a/abcdef',
     'a/abcdef/g',
     'a/abcdef/g/h',
@@ -164,7 +184,11 @@ const patterns = {
       'a/symlink/a/b/c/a/b/c',
     ]),
     'a/x',
+    'a/x/.y',
+    'a/x/.y/b',
     'a/z',
+    'a/z/.y',
+    'a/z/.y/b'
   ],
   './**/a/**/a/**/': common.isWindows ? [] : [
     'a/symlink/a',
@@ -242,7 +266,11 @@ const patterns = {
     'a/cb/e',
     'a/cb/e/f',
     'a/x',
+    'a/x/.y',
+    'a/x/.y/b',
     'a/z',
+    'a/z/.y',
+    'a/z/.y/b'
   ],
   'a/symlink/a/**/*': common.isWindows ? [] : [
     'a/symlink/a/b',
@@ -258,6 +286,8 @@ const patterns = {
     'a/c',
     'a/c/d',
     'a/cb',
+    'a/x',
+    'a/z'
   ],
   'a/!(symlink)/**/../': [
     'a',
@@ -268,6 +298,8 @@ const patterns = {
     'a/c',
     'a/c/d',
     'a/cb',
+    'a/x',
+    'a/z'
   ],
   'a/!(symlink)/**/../*': [
     'a/abcdef',
