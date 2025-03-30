@@ -695,6 +695,11 @@ added: v17.0.0
     to the history list duplicates an older one, this removes the older line
     from the list. **Default:** `false`.
   * `prompt` {string} The prompt string to use. **Default:** `'> '`.
+  * `forceConversationMode` {boolean} If `true`, it sets the interface to only communicate
+    via `rl.question()` calls. In such mode if a line is received when no question is
+    registered the line is saved in an internal buffer and submitted as soon as a
+    new question is registered (instead of being emitted).
+    **Default:** `false`.
   * `crlfDelay` {number} If the delay between `\r` and `\n` exceeds
     `crlfDelay` milliseconds, both `\r` and `\n` will be treated as separate
     end-of-line input. `crlfDelay` will be coerced to a number no less than
