@@ -2025,6 +2025,28 @@ The `file` name may be an absolute path. If it is not, the default directory it
 will be written to is controlled by the
 [`--diagnostic-dir`][] command-line option.
 
+### `--repl-completer`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+Set the completer to use for REPL server tab completion, the allowed values are:
+ * `'deep'` - This is the default behavior, the completion applies to
+   all expressions, generally this presents the most complete and desired
+   behavior, however as a consequence of this process all expressions inputted
+   get evaluated, meaning that accessing nested fields of objects runs 
+   potential [property getters][__TODO__] (e.g. typing `obj.foo.bar` triggers
+   potential getters of the `foo` field).
+ * `'shallow'` - This option performs completion for objects to only a single
+   level, meaning that property getters never get unintentionally triggered (
+   e.g. tab completions work for `obj.` but not for `obj.foo.`).
+ * `'none'`-  This options disabled the completion behavior entirely.
+
+The option applies to both the CLI REPL and REPL servers started manually,
+for the latter the option can be overridden by providing a `completer` to
+the [`start` function][__TODO__].
+
 ### `--report-compact`
 
 <!-- YAML

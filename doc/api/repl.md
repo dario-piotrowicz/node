@@ -730,8 +730,9 @@ changes:
     `undefined`. **Default:** `false`.
   * `writer` {Function} The function to invoke to format the output of each
     command before writing to `output`. **Default:** [`util.inspect()`][].
-  * `completer` {Function} An optional function used for custom Tab auto
-    completion. See [`readline.InterfaceCompleter`][] for an example.
+  * `completer` {string|Function} Optional field, either containing:
+    * A string matching one of the allowed values for [`--repl-completer`][]
+    * or an optional function used for custom Tab auto
   * `replMode` {symbol} A flag that specifies whether the default evaluator
     executes all JavaScript commands in strict mode or default (sloppy) mode.
     Acceptable values are:
@@ -1119,6 +1120,7 @@ Original code from <https://gist.github.com/TooTallNate/2053342>.
 [ZSH]: https://en.wikipedia.org/wiki/Z_shell
 [`'uncaughtException'`]: process.md#event-uncaughtexception
 [`--no-experimental-repl-await`]: cli.md#--no-experimental-repl-await
+[`--repl-completer`]: cli.md#--repl-completer
 [`ERR_DOMAIN_CANNOT_SET_UNCAUGHT_EXCEPTION_CAPTURE`]: errors.md#err_domain_cannot_set_uncaught_exception_capture
 [`ERR_INVALID_REPL_INPUT`]: errors.md#err_invalid_repl_input
 [`curl()`]: https://curl.haxx.se/docs/manpage.html

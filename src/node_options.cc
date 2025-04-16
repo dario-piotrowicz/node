@@ -516,6 +516,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_repl_await,
             kAllowedInEnvvar,
             true);
+  AddOption("--repl-completer",
+            "completer to use for REPL, either 'deep', 'shallow' or 'none'",
+            &EnvironmentOptions::repl_completer,
+            kAllowedInEnvvar);
   AddOption("--experimental-vm-modules",
             "experimental ES Module support in vm module",
             &EnvironmentOptions::experimental_vm_modules,
