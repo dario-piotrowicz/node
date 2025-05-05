@@ -1,0 +1,48 @@
+name: Internal Bindings Validation
+
+env:
+  NODE_VERSION: lts/*
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - src/**
+      - lib/**
+      - test/**
+  push:
+    branches:
+      - main
+      - canary
+      - v[0-9]+.x-staging
+      - v[0-9]+.x
+    paths:
+      - src/**
+      - lib/**
+      - test/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-internal-binding-validation:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Validate internal binding functions usage
+        run: |
+          node tools/internal-bindings-functions-validation/usage.mjs
+      - name: Validate internal binding functions typing
+        run: |
+          node tools/internal-bindings-functions-validation/typings.mjs
