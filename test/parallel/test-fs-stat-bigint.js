@@ -18,17 +18,15 @@ function getFilename() {
   return filename;
 }
 
-function verifyStats(bigintStats, numStats, allowableDelta) {
-  // allowableDelta: It's possible that the file stats are updated between the
-  // two stat() calls so allow for a small difference.
+function verifyStats(bigintStats, numStats) {
   for (const key of Object.keys(numStats)) {
     const val = numStats[key];
     if (isDate(val)) {
       const time = val.getTime();
       const time2 = bigintStats[key].getTime();
       assert(
-        time - time2 <= allowableDelta,
-        `difference of ${key}.getTime() should <= ${allowableDelta}.\n` +
+        time - time2 === 0,
+        `difference ${key}.getTime() should be zero.\n` +
         `Number version ${time}, BigInt version ${time2}n`);
     } else if (key === 'mode') {
       assert.strictEqual(bigintStats[key], BigInt(val));
@@ -67,17 +65,22 @@ function verifyStats(bigintStats, numStats, allowableDelta) {
       const msFromBigIntNs = Number(nsFromBigInt / (10n ** 6n));
       const msFromNum = numStats[key];
 
-      assert(
-        msFromNum - Number(msFromBigInt) <= allowableDelta,
-        `Number version ${key} = ${msFromNum}, ` +
-        `BigInt version ${key} = ${msFromBigInt}n, ` +
-        `Allowable delta = ${allowableDelta}`);
+      // When bigint ns values are converted into ms the fractional
+      // part of the number is lost, so we adjust the non-bigint
+      // ms value in the same way
+      const flooredMsFromNum = Math.floor(msFromNum);
 
       assert(
-        msFromNum - Number(msFromBigIntNs) <= allowableDelta,
-        `Number version ${key} = ${msFromNum}, ` +
+        flooredMsFromNum - Number(msFromBigInt) === 0,
+        `Floored Number version ${key} = ${flooredMsFromNum}, ` +
+        `BigInt version ${key} = ${msFromBigInt}n, `
+      );
+
+      assert(
+        flooredMsFromNum - Number(msFromBigIntNs) === 0,
+        `Floored Number version ${key} = ${msFromNum}, ` +
         `BigInt version ${nsKey} = ${nsFromBigInt}n` +
-        ` = ${msFromBigIntNs}ms, Allowable delta = ${allowableDelta}`);
+        ` = ${msFromBigIntNs}ms`);
     } else if (Number.isSafeInteger(val)) {
       assert.strictEqual(
         bigintStats[key], BigInt(val),
@@ -94,12 +97,9 @@ function verifyStats(bigintStats, numStats, allowableDelta) {
 }
 
 const runSyncTest = (func, arg) => {
-  const startTime = process.hrtime.bigint();
   const bigintStats = func(arg, common.mustNotMutateObjectDeep({ bigint: true }));
   const numStats = func(arg);
-  const endTime = process.hrtime.bigint();
-  const allowableDelta = Math.ceil(Number(endTime - startTime) / 1e6);
-  verifyStats(bigintStats, numStats, allowableDelta);
+  verifyStats(bigintStats, numStats);
 };
 
 {
@@ -149,12 +149,9 @@ if (!common.isWindows) {
 }
 
 const runCallbackTest = (func, arg, done) => {
-  const startTime = process.hrtime.bigint();
   func(arg, common.mustNotMutateObjectDeep({ bigint: true }), common.mustCall((err, bigintStats) => {
     func(arg, common.mustCall((err, numStats) => {
-      const endTime = process.hrtime.bigint();
-      const allowableDelta = Math.ceil(Number(endTime - startTime) / 1e6);
-      verifyStats(bigintStats, numStats, allowableDelta);
+      verifyStats(bigintStats, numStats);
       if (done) {
         done();
       }
@@ -181,12 +178,9 @@ if (!common.isWindows) {
 }
 
 const runPromiseTest = async (func, arg) => {
-  const startTime = process.hrtime.bigint();
   const bigintStats = await func(arg, common.mustNotMutateObjectDeep({ bigint: true }));
   const numStats = await func(arg);
-  const endTime = process.hrtime.bigint();
-  const allowableDelta = Math.ceil(Number(endTime - startTime) / 1e6);
-  verifyStats(bigintStats, numStats, allowableDelta);
+  verifyStats(bigintStats, numStats);
 };
 
 {
@@ -204,12 +198,9 @@ if (!common.isWindows) {
 (async function() {
   const filename = getFilename();
   const handle = await promiseFs.open(filename, 'r');
-  const startTime = process.hrtime.bigint();
   const bigintStats = await handle.stat(common.mustNotMutateObjectDeep({ bigint: true }));
   const numStats = await handle.stat();
-  const endTime = process.hrtime.bigint();
-  const allowableDelta = Math.ceil(Number(endTime - startTime) / 1e6);
-  verifyStats(bigintStats, numStats, allowableDelta);
+  verifyStats(bigintStats, numStats);
   await handle.close();
 })().then(common.mustCall());
 
