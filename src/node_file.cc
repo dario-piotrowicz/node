@@ -21,6 +21,7 @@
 #include "node_file.h"  // NOLINT(build/include_inline)
 #include "ada.h"
 #include "aliased_buffer-inl.h"
+#include "env.h"
 #include "memory_tracker-inl.h"
 #include "node_buffer.h"
 #include "node_debug.h"
@@ -1048,6 +1049,39 @@ static void ExistsSync(const FunctionCallbackInfo<Value>& args) {
 
   args.GetReturnValue().Set(err == 0);
 }
+
+static bool FastExistsSync(Local<Value> receiver,
+                           Local<Value> arg0,
+                           v8::FastApiCallbackOptions &options) {
+  BufferValue path(options.isolate, arg0);
+  CHECK_NOT_NULL(*path);
+
+  auto env = Environment::GetCurrent(options.isolate);
+  ToNamespacedPath(env, &path);
+  THROW_IF_INSUFFICIENT_PERMISSIONS(
+      env, permission::PermissionScope::kFileSystemRead, path.ToStringView(), false);
+
+  uv_fs_t req;
+  auto make = OnScopeLeave([&req]() { uv_fs_req_cleanup(&req); });
+  FS_SYNC_TRACE_BEGIN(access);
+  int err = uv_fs_access(nullptr, &req, path.out(), 0, nullptr);
+  FS_SYNC_TRACE_END(access);
+
+#ifdef _WIN32
+  // In case of an invalid symlink, `uv_fs_access` on win32
+  // will **not** return an error and is therefore not enough.
+  // Double check with `uv_fs_stat()`.
+  if (err == 0) {
+    FS_SYNC_TRACE_BEGIN(stat);
+    err = uv_fs_stat(nullptr, &req, path.out(), nullptr);
+    FS_SYNC_TRACE_END(stat);
+  }
+#endif  // _WIN32
+
+  return err == 0;
+}
+
+static v8::CFunction exists_sync_fast_(v8::CFunction::Make(*FastExistsSync));
 
 // Used to speed up module loading.  Returns 0 if the path refers to
 // a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
@@ -3889,7 +3923,7 @@ static void CreatePerIsolateProperties(IsolateData* isolate_data,
             GetFormatOfExtensionlessFile);
   SetMethod(isolate, target, "access", Access);
   SetMethod(isolate, target, "close", Close);
-  SetMethod(isolate, target, "existsSync", ExistsSync);
+  SetFastMethod(isolate, target, "existsSync", ExistsSync, &exists_sync_fast_);
   SetMethod(isolate, target, "open", Open);
   SetMethod(isolate, target, "openFileHandle", OpenFileHandle);
   SetMethod(isolate, target, "read", Read);
@@ -4015,6 +4049,8 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetFormatOfExtensionlessFile);
   registry->Register(Close);
   registry->Register(ExistsSync);
+  registry->Register(FastExistsSync);
+  registry->Register(exists_sync_fast_.GetTypeInfo());
   registry->Register(Open);
   registry->Register(OpenFileHandle);
   registry->Register(Read);
