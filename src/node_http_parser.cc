@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "node.h"
+#include "node_debug.h"
 #include "node_buffer.h"
 #include "util.h"
 
@@ -30,6 +31,7 @@
 #include "node_external_reference.h"
 #include "stream_base-inl.h"
 #include "v8.h"
+#include "v8-fast-api-calls.h"
 
 #include <cstdlib>  // free()
 #include <cstring>  // strdup(), strchr()
@@ -53,8 +55,10 @@ namespace http_parser {  // NOLINT(build/namespaces)
 using v8::Array;
 using v8::Boolean;
 using v8::Context;
+using v8::CFunction;
 using v8::EscapableHandleScope;
 using v8::Exception;
+using v8::FastApiCallbackOptions;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
@@ -571,16 +575,27 @@ class Parser : public AsyncWrap, public StreamListener {
     delete parser;
   }
 
-  // TODO(@anonrig): Add V8 Fast API
-  static void Free(const FunctionCallbackInfo<Value>& args) {
+  static void FreeImpl(const v8::Local<Value> this_obj) {
     Parser* parser;
-    ASSIGN_OR_RETURN_UNWRAP(&parser, args.This());
+    ASSIGN_OR_RETURN_UNWRAP(&parser, this_obj);
 
     // Since the Parser destructor isn't going to run the destroy() callbacks
     // it needs to be triggered manually.
     parser->EmitTraceEventDestroy();
     parser->EmitDestroy();
   }
+
+  static void FastFree(Local<Value> receiver,
+                       FastApiCallbackOptions& options) {
+    TRACK_V8_FAST_API_CALL("http_parser.free");
+    FreeImpl(receiver);
+  }
+
+  static void Free(const FunctionCallbackInfo<Value>& args) {
+    return FreeImpl(args.This());
+  }
+
+  static CFunction fast_free_;
 
   // TODO(@anonrig): Add V8 Fast API
   static void Remove(const FunctionCallbackInfo<Value>& args) {
@@ -721,7 +736,6 @@ class Parser : public AsyncWrap, public StreamListener {
     stream->PushStreamListener(parser);
   }
 
-  // TODO(@anonrig): Add V8 Fast API
   static void Unconsume(const FunctionCallbackInfo<Value>& args) {
     Parser* parser;
     ASSIGN_OR_RETURN_UNWRAP(&parser, args.This());
@@ -1235,6 +1249,8 @@ const llhttp_settings_t Parser::settings = {
     nullptr,
 };
 
+CFunction Parser::fast_free_ = CFunction::Make(&Parser::FastFree);
+
 void CreatePerIsolateProperties(IsolateData* isolate_data,
                                 Local<ObjectTemplate> target) {
   Isolate* isolate = isolate_data->isolate();
@@ -1289,7 +1305,11 @@ void CreatePerIsolateProperties(IsolateData* isolate_data,
 
   t->Inherit(AsyncWrap::GetConstructorTemplate(isolate_data));
   SetProtoMethod(isolate, t, "close", Parser::Close);
-  SetProtoMethod(isolate, t, "free", Parser::Free);
+  SetFastMethod(isolate,
+                t->PrototypeTemplate(),
+                "free",
+                Parser::Free,
+                &Parser::fast_free_);
   SetProtoMethod(isolate, t, "remove", Parser::Remove);
   SetProtoMethod(isolate, t, "execute", Parser::Execute);
   SetProtoMethod(isolate, t, "finish", Parser::Finish);
@@ -1373,6 +1393,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(ConnectionsList::Idle);
   registry->Register(ConnectionsList::Active);
   registry->Register(ConnectionsList::Expired);
+  registry->Register(Parser::fast_free_);
 }
 
 }  // namespace http_parser
