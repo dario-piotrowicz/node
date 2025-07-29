@@ -48,20 +48,20 @@ class ActionStream extends stream.Stream {
 ActionStream.prototype.readable = true;
 
 // Mock keys
-const ENTER = { name: "enter" };
-const UP = { name: "up" };
-const DOWN = { name: "down" };
-const LEFT = { name: "left" };
-const RIGHT = { name: "right" };
-const BACKSPACE = { name: "backspace" };
-const TABULATION = { name: "tab" };
-const WORD_LEFT = { name: "left", ctrl: true };
-const WORD_RIGHT = { name: "right", ctrl: true };
-const GO_TO_END = { name: "end" };
-const SIGINT = { name: "c", ctrl: true };
-const ESCAPE = { name: "escape", meta: true };
+var ENTER = { name: "enter" };
+var UP = { name: "up" };
+var DOWN = { name: "down" };
+var LEFT = { name: "left" };
+var RIGHT = { name: "right" };
+var BACKSPACE = { name: "backspace" };
+var TABULATION = { name: "tab" };
+var WORD_LEFT = { name: "left", ctrl: true };
+var WORD_RIGHT = { name: "right", ctrl: true };
+var GO_TO_END = { name: "end" };
+var SIGINT = { name: "c", ctrl: true };
+var ESCAPE = { name: "escape", meta: true };
 
-const prompt = "> ";
+var prompt = "> ";
 
 const tests = [
   {
