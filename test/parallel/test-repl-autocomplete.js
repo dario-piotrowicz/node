@@ -67,7 +67,7 @@ const tests = [
   {
     env: { NODE_REPL_HISTORY: defaultHistoryPath },
     test: (function*() {
-      // Deleting Array iterator should not break history feature.
+      // Deleting Array iterator should not break history feature..
       //
       // Using a generator function instead of an object to allow the test to
       // keep iterating even when Array.prototype[Symbol.iterator] has been
