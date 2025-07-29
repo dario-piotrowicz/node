@@ -19,15 +19,15 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-'use strict';
-const common = require('../common');
-const ArrayStream = require('../common/arraystream');
-const assert = require('assert');
-const util = require('util');
-const repl = require('repl');
+"use strict";
+const common = require("../common");
+const ArrayStream = require("../common/arraystream");
+const assert = require("assert");
+const util = require("util");
+const repl = require("repl");
 
 const putIn = new ArrayStream();
-repl.start('', putIn, null, true);
+repl.start("", putIn, null, true);
 
 test1();
 
@@ -39,14 +39,14 @@ function test1() {
 
       // Inspect output matches repl output
       assert.strictEqual(data,
-                         `${util.inspect(require('fs'), null, 2, false)}\n`);
+                         `${util.inspect(require("fs"), null, 2, false)}\n`);
       // Globally added lib matches required lib
-      assert.strictEqual(globalThis.fs, require('fs'));
+      assert.strictEqual(globalThis.fs, require("fs"));
       test2();
     }
   };
   assert(!gotWrite);
-  putIn.run(['fs']);
+  putIn.run(["fs"]);
   assert(gotWrite);
 }
 
@@ -56,15 +56,15 @@ function test2() {
     gotWrite = true;
     if (data.length) {
       // REPL response error message
-      assert.strictEqual(data, '{}\n');
-      // Original value wasn't overwritten
+      assert.strictEqual(data, "{}\n");
+      // Original value wasn"t overwritten
       assert.strictEqual(val, globalThis.url);
     }
   };
-  const val = {};
+  var val = {};
   globalThis.url = val;
   common.allowGlobals(val);
   assert(!gotWrite);
-  putIn.run(['url']);
+  putIn.run(["url"]);
   assert(gotWrite);
 }
