@@ -48,20 +48,20 @@ class ActionStream extends stream.Stream {
 ActionStream.prototype.readable = true;
 
 // Mock keys
-var ENTER = { name: "enter" };
-var UP = { name: "up" };
-var DOWN = { name: "down" };
-var LEFT = { name: "left" };
-var RIGHT = { name: "right" };
-var BACKSPACE = { name: "backspace" };
-var TABULATION = { name: "tab" };
-var WORD_LEFT = { name: "left", ctrl: true };
-var WORD_RIGHT = { name: "right", ctrl: true };
-var GO_TO_END = { name: "end" };
-var SIGINT = { name: "c", ctrl: true };
-var ESCAPE = { name: "escape", meta: true };
+var ENTER = { name: 'enter' };
+var UP = { name: 'up' };
+var DOWN = { name: 'down' };
+var LEFT = { name: 'left' };
+var RIGHT = { name: 'right' };
+var BACKSPACE = { name: 'backspace' };
+var TABULATION = { name: 'tab' };
+var WORD_LEFT = { name: 'left', ctrl: true };
+var WORD_RIGHT = { name: 'right', ctrl: true };
+var GO_TO_END = { name: 'end' };
+var SIGINT = { name: 'c', ctrl: true };
+var ESCAPE = { name: 'escape', meta: true };
 
-var prompt = "> ";
+var prompt = '> ';
 
 const tests = [
   {
@@ -101,10 +101,10 @@ const tests = [
       yield WORD_RIGHT;
       yield ESCAPE;
       yield ENTER;
-      yield 'require("./';
+      yield 'require('./';
       yield TABULATION;
       yield SIGINT;
-      yield 'import("./';
+      yield 'import('./';
       yield TABULATION;
       yield SIGINT;
       yield 'Array.proto';
