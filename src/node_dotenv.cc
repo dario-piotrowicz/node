@@ -3,6 +3,7 @@
 #include "env-inl.h"
 #include "node_file.h"
 #include "uv.h"
+#include <algorithm>
 
 namespace node {
 
@@ -84,6 +85,22 @@ Maybe<void> Dotenv::SetEnvironment(node::Environment* env) {
   return JustVoid();
 }
 
+bool Dotenv::HasErrors() const {
+  return this->errors.size() > 0;
+}
+
+std::string Dotenv::GetErrorsMessage() const {
+  std::string message = "The following validation errors occurred when parsing the dotenv data:\n";
+
+  for (auto error : this->errors) {
+    char error_message [error.message.length() + 50];
+    sprintf(error_message, " - %s at (%d,%d)\n", error.message.c_str(), error.pos.line, error.pos.col);
+    message.append(error_message);
+  }
+
+  return message;
+}
+
 MaybeLocal<Object> Dotenv::ToObject(Environment* env) const {
   EscapableHandleScope scope(env->isolate());
   Local<Object> result = Object::New(env->isolate());
@@ -103,26 +120,26 @@ MaybeLocal<Object> Dotenv::ToObject(Environment* env) const {
   return scope.Escape(result);
 }
 
-// Removes leading and trailing spaces from a string_view.
-// Returns an empty string_view if the input is empty.
-// Example:
-//   trim_spaces("  hello  ") -> "hello"
-//   trim_spaces("") -> ""
-std::string_view trim_spaces(std::string_view input) {
-  if (input.empty()) return "";
+// // Removes leading and trailing spaces from a string_view.
+// // Returns an empty string_view if the input is empty.
+// // Example:
+// //   trim_spaces("  hello  ") -> "hello"
+// //   trim_spaces("") -> ""
+// std::string_view trim_spaces(std::string_view input) {
+//   if (input.empty()) return "";
 
-  auto pos_start = input.find_first_not_of(" \t\n");
-  if (pos_start == std::string_view::npos) {
-    return "";
-  }
+//   auto pos_start = input.find_first_not_of(" \t\n");
+//   if (pos_start == std::string_view::npos) {
+//     return "";
+//   }
 
-  auto pos_end = input.find_last_not_of(" \t\n");
-  if (pos_end == std::string_view::npos) {
-    return input.substr(pos_start);
-  }
+//   auto pos_end = input.find_last_not_of(" \t\n");
+//   if (pos_end == std::string_view::npos) {
+//     return input.substr(pos_start);
+//   }
 
-  return input.substr(pos_start, pos_end - pos_start + 1);
-}
+//   return input.substr(pos_start, pos_end - pos_start + 1);
+// }
 
 void Dotenv::ParseContent(const std::string_view input) {
   std::string lines(input);
@@ -131,10 +148,28 @@ void Dotenv::ParseContent(const std::string_view input) {
   lines.erase(std::remove(lines.begin(), lines.end(), '\r'), lines.end());
 
   std::string_view content = lines;
-  content = trim_spaces(content);
+
+  int16_t current_line = 0;
+  int16_t current_col = 0;
 
   std::string_view key;
   std::string_view value;
+
+  auto trim_leading_spaces = [&content, &current_line, &current_col]() {
+    size_t idx = -1;
+    while (idx < content.length()) {
+      idx++;
+      auto chr = content.at(idx);
+      if (chr == '\n') {
+        current_line++;
+        current_col = 0;
+      } else if (chr == '\t' || chr == ' ') {
+        current_col++;
+      } else {
+        content = content.substr(idx);
+      }
+    }
+  };
 
   while (!content.empty()) {
     // Skip empty lines and comments
@@ -142,6 +177,8 @@ void Dotenv::ParseContent(const std::string_view input) {
       // Check if the first character of the content is a newline or a hash
       auto newline = content.find('\n');
       if (newline != std::string_view::npos) {
+        current_line++;
+        current_col=0;
         // Remove everything up to and including the newline character
         content.remove_prefix(newline + 1);
       } else {
@@ -161,40 +198,60 @@ void Dotenv::ParseContent(const std::string_view input) {
     // If we found nothing or found a newline before equals, the line is invalid
     if (equal_or_newline == std::string_view::npos ||
         content.at(equal_or_newline) == '\n') {
+      if (content.at(equal_or_newline) == '\n') {
+        current_line++;
+        current_col=0;
+      }
       if (equal_or_newline != std::string_view::npos) {
         content.remove_prefix(equal_or_newline + 1);
-        content = trim_spaces(content);
+        trim_leading_spaces();
         continue;
       }
       break;
     }
 
     // We found an equals sign, extract the key
+    trim_leading_spaces();
     key = content.substr(0, equal_or_newline);
     content.remove_prefix(equal_or_newline + 1);
-    key = trim_spaces(key);
-
-    // If the value is not present (e.g. KEY=) set it to an empty string
-    if (content.empty() || content.front() == '\n') {
-      store_.insert_or_assign(std::string(key), "");
-      continue;
-    }
-
-    content = trim_spaces(content);
+    key = key; //trim_spaces(key);
 
     // Skip lines with empty keys after trimming spaces.
     // Examples of invalid keys that would be skipped:
     //   =value
     //   "   "=value
-    if (key.empty()) continue;
+    if (key.empty()) {
+      current_line++;
+      auto err = validation_error{"No or empty key defined", position{current_line, current_col}};
+      errors.push_back(err);
+      continue;
+    }
+
+    // If the value is not present (e.g. KEY=) set it to an empty string
+    if (content.empty() || content.front() == '\n') {
+      auto a = std::string(key);
+      char error_message [a.length() + 35];
+      sprintf(error_message, "Key \"%s\" defined without a value", a.c_str());
+      auto err = validation_error{error_message, position{current_line, current_col}};
+      errors.push_back(err);
+
+      store_.insert_or_assign(std::string(key), "");
+      continue;
+    }
+
+    // content = trim_spaces(content);
+    trim_leading_spaces();
 
     // Remove export prefix from key and ensure proper spacing.
     // Example: export FOO=bar -> FOO=bar
     if (key.starts_with("export ")) {
       key.remove_prefix(7);
+      current_col+=7;
+
+      trim_leading_spaces();
       // Trim spaces after removing export prefix to handle cases like:
       // export   FOO=bar
-      key = trim_spaces(key);
+      key = key;// trim_spaces(key);
     }
 
     // SAFETY: Content is guaranteed to have at least one character
@@ -284,7 +341,7 @@ void Dotenv::ParseContent(const std::string_view input) {
         if (hash_character != std::string_view::npos) {
           value = value.substr(0, hash_character);
         }
-        value = trim_spaces(value);
+        value = value;//trim_spaces(value);
         store_.insert_or_assign(std::string(key), std::string(value));
         content.remove_prefix(newline + 1);
       } else {
@@ -294,12 +351,13 @@ void Dotenv::ParseContent(const std::string_view input) {
         if (hash_char != std::string_view::npos) {
           value = content.substr(0, hash_char);
         }
-        store_.insert_or_assign(std::string(key), trim_spaces(value));
+        store_.insert_or_assign(std::string(key), value);//trim_spaces(value));
         content = {};
       }
     }
 
-    content = trim_spaces(content);
+    // content = trim_spaces(content);
+    trim_leading_spaces();
   }
 }
 

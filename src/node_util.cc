@@ -238,12 +238,28 @@ CFunction fast_guess_handle_type_(CFunction::Make(FastGuessHandleType));
 
 static void ParseEnv(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  CHECK_EQ(args.Length(), 1);  // content
+  CHECK_LE(args.Length(), 2); // content, validationLevel
   CHECK(args[0]->IsString());
+  std::string validation_level{};
+
+  if (args.Length() == 2) {
+    CHECK(args[1]->IsString());
+    Utf8Value raw_validation_level(env->isolate(), args[1]);
+    validation_level = raw_validation_level.ToStringView().data();
+  }
+
+  if(validation_level.empty()) {
+    constexpr auto default_validation_level = "loose";
+    validation_level = default_validation_level;
+  }
+
   Utf8Value content(env->isolate(), args[0]);
   Dotenv dotenv{};
   dotenv.ParseContent(content.ToStringView());
   Local<Object> obj;
+  if (validation_level != "loose" && dotenv.HasErrors()) {
+    return THROW_ERR_INVALID_DOTENV_CONTENT(env, dotenv.GetErrorsMessage().c_str());
+  }
   if (dotenv.ToObject(env).ToLocal(&obj)) {
     args.GetReturnValue().Set(obj);
   }

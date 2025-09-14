@@ -18,6 +18,16 @@ class Dotenv {
     bool is_optional;
   };
 
+  struct position {
+    int line;
+    int col;
+  };
+
+  struct validation_error {
+    std::string message;
+    position pos;
+  };
+
   Dotenv() = default;
   Dotenv(const Dotenv& d) = delete;
   Dotenv(Dotenv&& d) noexcept = default;
@@ -31,11 +41,16 @@ class Dotenv {
   v8::Maybe<void> SetEnvironment(Environment* env);
   v8::MaybeLocal<v8::Object> ToObject(Environment* env) const;
 
+  bool HasErrors() const;
+
+  std::string GetErrorsMessage() const;
+
   static std::vector<env_file_data> GetDataFromArgs(
       const std::vector<std::string>& args);
 
  private:
   std::map<std::string, std::string> store_;
+  std::vector<validation_error> errors;
 };
 
 }  // namespace node
